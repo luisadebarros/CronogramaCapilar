@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CronogramaCapilar.API/CronogramaCapilar.API.csproj" />
+    <Project Path="src/CronogramaCapilar.Application/CronogramaCapilar.Application.csproj" />
+    <Project Path="src/CronogramaCapilar.Domain/CronogramaCapilar.Domain.csproj" />
+    <Project Path="src/CronogramaCapilar.Infrastructure/CronogramaCapilar.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CronogramaCapilar.Domain.Tests/CronogramaCapilar.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
