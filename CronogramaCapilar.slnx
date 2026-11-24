@@ -6,6 +6,8 @@
     <Project Path="src/CronogramaCapilar.Infrastructure/CronogramaCapilar.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/CronogramaCapilar.Application.Tests/CronogramaCapilar.Application.Tests.csproj" />
     <Project Path="tests/CronogramaCapilar.Domain.Tests/CronogramaCapilar.Domain.Tests.csproj" />
+    <Project Path="tests/CronogramaCapilar.Infrastructure.Tests/CronogramaCapilar.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

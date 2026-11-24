@@ -16,7 +16,7 @@ API  ──►  Application  ──►  Domain
 |---|---|---|
 | **Domain** | Entidades, objetos de valor, enums, regras de negócio e os contratos dos repositórios | ninguém |
 | **Application** | Casos de uso (services), requests/responses (DTOs), `Result`/erros esperados | Domain |
-| **Infrastructure** | EF Core (`AppDbContext`, DbSets, configurações das tabelas, migrations), repositórios, JWT e hash de senha | Application, Domain |
+| **Infrastructure** | EF Core (`AppDbContext`, DbSets, configurações das tabelas, migrations), repositórios, JWT, hash de senha e clientes de APIs externas | Application, Domain |
 | **API** | Controllers, tratamento global de erros, rate limit, OpenAPI/Swagger | Application, Infrastructure |
 
 ### Convenções
@@ -51,7 +51,7 @@ dotnet test                              # testes (na raiz)
 dotnet ef migrations add NomeDaMudanca --project src/CronogramaCapilar.Infrastructure --startup-project src/CronogramaCapilar.API --output-dir Persistence/Migrations
 ```
 
-## Endpoints (fase 1)
+## Endpoints
 
 | Método | Rota | Login? | O que faz |
 |---|---|---|---|
@@ -63,6 +63,18 @@ dotnet ef migrations add NomeDaMudanca --project src/CronogramaCapilar.Infrastru
 | PUT | `/api/users/me` | sim | Atualiza nome, como quer ser chamado(a), nascimento e gênero |
 | PUT | `/api/users/me/hair-profile` | sim | Cria/substitui o perfil capilar (tipo, comprimento, lavagens/semana, tratamentos) |
 | DELETE | `/api/users/me` | sim | Exclui a conta e tudo ligado a ela |
+| GET | `/api/products?query=...&page=1&pageSize=20` | sim | Pesquisa produtos por nome, marca ou tipo |
+| GET | `/api/products/{barcode}` | sim | Busca um produto pelo código de barras (embalagem escaneada) |
+
+**Pesquisa de produtos:** os dados vêm do [Open Beauty Facts](https://world.openbeautyfacts.org/), uma base aberta e gratuita, e nada é salvo no nosso banco.
+- O Open Beauty Facts permite só 10 pesquisas e 15 consultas de produto por minuto **por IP**, e todas as chamadas saem do nosso servidor. Por isso os resultados ficam em cache: pesquisas por 30 min, produtos por 24 h e "não encontrado" por 1 h.
+- Cada usuário pode fazer 30 requisições por minuto nessas rotas.
+- Se o Open Beauty Facts estiver fora do ar, a API responde **503**.
+- Muitos produtos brasileiros ainda não têm foto na base (`imageUrl: null`), então o app deve mostrar uma imagem padrão.
+- O `ProductCatalog:UserAgent` identifica o app para o Open Beauty Facts, que pede o formato `NomeDoApp/Versão (e-mail de contato)`. Como o repositório é público, o valor com e-mail fica nos user-secrets (em produção, na variável de ambiente `ProductCatalog__UserAgent`):
+  ```bash
+  dotnet user-secrets set "ProductCatalog:UserAgent" "CronogramaCapilar/1.0 (seu@email.com)"
+  ```
 
 **Sessão no app:** o access token dura 15 min e vai no header `Authorization: Bearer ...`. Quando expirar, o app chama `/refresh` com o refresh token, que dura 30 dias e deve ficar no armazenamento seguro do celular. Cada refresh token só pode ser usado uma vez. Se um token já trocado for reutilizado, todas as sessões da pessoa são derrubadas (proteção contra token roubado).
 
@@ -71,7 +83,7 @@ dotnet ef migrations add NomeDaMudanca --project src/CronogramaCapilar.Infrastru
 ## Roteiro
 
 1. ✅ **Base:** arquitetura, banco, cadastro/login com refresh token, perfil capilar, excluir conta
-2. **Produtos:** pesquisa de produtos em API externa (Open Beauty Facts)
+2. ✅ **Produtos:** pesquisa por texto e por código de barras no Open Beauty Facts, com cache e resiliência (retry, timeout, circuit breaker)
 3. **Cronograma:** o app recomenda um cronograma pelo perfil, e a pessoa escolhe seguir esse ou montar um do zero. Os dois são editáveis. Também marcar o dia como feito.
 4. **Lembretes:** horários/dias dos alarmes, e um endpoint com os próximos lembretes para o app agendar notificações locais
 5. **Depois:** notificações pelo servidor, histórico, deploy na nuvem, testes de integração

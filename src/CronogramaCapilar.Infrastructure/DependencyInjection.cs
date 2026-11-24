@@ -1,8 +1,10 @@
 using System.Text;
+using CronogramaCapilar.Application.ExternalServices.Interfaces;
 using CronogramaCapilar.Application.Security;
 using CronogramaCapilar.Application.Security.Interfaces;
 using CronogramaCapilar.Domain.Repositories.Interfaces;
 using CronogramaCapilar.Infrastructure.Configuration;
+using CronogramaCapilar.Infrastructure.ExternalServices;
 using CronogramaCapilar.Infrastructure.Persistence;
 using CronogramaCapilar.Infrastructure.Persistence.Interceptors;
 using CronogramaCapilar.Infrastructure.Repositories;
@@ -25,8 +27,33 @@ public static class DependencyInjection
 
         AddPersistence(services, configuration);
         AddSecurity(services);
+        AddExternalServices(services);
 
         return services;
+    }
+
+    private static void AddExternalServices(IServiceCollection services)
+    {
+        services.AddMemoryCache();
+
+        services.AddOptions<ProductCatalogOptions>()
+            .BindConfiguration(ProductCatalogOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient<IProductCatalog, ProductCatalog>((provider, client) =>
+            {
+                var options = provider.GetRequiredService<IOptions<ProductCatalogOptions>>().Value;
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
+            })
+            // Timeout, retry e circuit breaker. Só 1 retry: cada tentativa gasta a cota do Open Beauty Facts.
+            .AddStandardResilienceHandler(resilience =>
+            {
+                resilience.Retry.MaxRetryAttempts = 1;
+                resilience.AttemptTimeout.Timeout = TimeSpan.FromSeconds(8);
+                resilience.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(20);
+            });
     }
 
     private static void AddPersistence(IServiceCollection services, IConfiguration configuration)

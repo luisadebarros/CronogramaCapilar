@@ -7,4 +7,7 @@ public enum ErrorType
     NotFound = 2,
     Conflict = 3,
     Unauthorized = 4,
+
+    /// <summary>Um serviço externo (ex.: pesquisa de produtos) não respondeu.</summary>
+    Unavailable = 5,
 }

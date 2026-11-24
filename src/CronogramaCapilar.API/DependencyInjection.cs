@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using CronogramaCapilar.API.Configuration;
 using CronogramaCapilar.API.Handlers;
 using CronogramaCapilar.API.OpenApi;
+using CronogramaCapilar.Application.Security;
 using Microsoft.AspNetCore.Authorization;
 
 namespace CronogramaCapilar.API;
@@ -10,6 +12,7 @@ namespace CronogramaCapilar.API;
 public static class DependencyInjection
 {
     private const int AuthRequestsPerMinute = 20;
+    private const int ProductRequestsPerMinute = 30;
 
     public static IServiceCollection AddApi(this IServiceCollection services)
     {
@@ -44,6 +47,18 @@ public static class DependencyInjection
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
                         PermitLimit = AuthRequestsPerMinute,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                    }));
+
+            options.AddPolicy(RateLimitPolicies.ProductSearch, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.User.FindFirstValue(AuthClaims.UserId)
+                        ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                        ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = ProductRequestsPerMinute,
                         Window = TimeSpan.FromMinutes(1),
                         QueueLimit = 0,
                     }));
